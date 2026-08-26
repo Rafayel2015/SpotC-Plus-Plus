@@ -300,21 +300,28 @@ jobs:
     - name: Download EeveeSpotify .deb file from releases
       if: ${{ github.event.inputs.USEACTIONSEEVEE == 'false' }}
       run: |
-        eevee_asset=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ env.EEVEEREPO }}/releases/tags/${{ env.EEVEETAG }} | jq -r '.assets[] | select(.name | startswith("com.eevee.spotify") and endswith("iphoneos-arm.deb")).browser_download_url')
-        echo "Downloading From: $eevee_asset"
-        curl -LJO "$eevee_asset"
-        downloaded_file=$(ls -t | head -n1)
+        DIRECT_EEVEE_URL="https://github.com/whoeevee/EeveeSpotifyReborn/releases/download/swift6.2.2/com.eevee.spotify_6.2.2_iphoneos-arm64.deb"
+        echo "Downloading From: $DIRECT_EEVEE_URL"
+        curl -LJO "$DIRECT_EEVEE_URL"
+        downloaded_file=$(ls -t *.deb | head -n1)
         mv "$downloaded_file" "Build Components/"
         echo "eevee-arm=Build Components/$downloaded_file" >> $GITHUB_ENV
-      env:
-        EEVEETAG: ${{ env.EEVEETAG }}
 
     - name: Download EeveeSpotify .deb file from artifacts
       if: ${{ github.event.inputs.USEACTIONSEEVEE == 'true' }}
       run: |
-        workflow_run_id=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ env.EEVEEREPO }}/actions/workflows/build-swift.yml/runs?status=success&per_page=1" | jq -r '.workflow_runs[0].id')
+        RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ env.EEVEEREPO }}/actions/runs?status=success&per_page=10")
+        
+        workflow_run_id=$(echo "$RESPONSE" | jq -r '.workflow_runs[]? | select(.name=="build-swift" or .path==".github/workflows/build-swift.yml") | .id' | head -n 1)
+        
+        if [ -z "$workflow_run_id" ] || [ "$workflow_run_id" == "null" ]; then
+          echo "Error: Could not find any successful workflow run for EeveeSpotify artifacts."
+          exit 1
+        fi
+
         echo "Workflow ID: $workflow_run_id"
         eevee_asset=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ env.EEVEEREPO }}/actions/runs/$workflow_run_id/artifacts | jq -r '.artifacts[] | select(.name | test("debug|arm64") | not) | .archive_download_url')
+        
         echo "Downloading From: $eevee_asset"
         curl -LJ -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$eevee_asset" -o "eeveespotfiyactionsasset.zip"
         unzip -q "eeveespotfiyactionsasset.zip" -d extracted_files
