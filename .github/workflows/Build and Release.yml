@@ -24,6 +24,8 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -729,3 +731,9 @@ jobs:
       with:
         name: UpdatedScarletRepo
         path: ScarletRepo.json
+
+    - name: Commit and Push Repo Changes
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "Update Repo JSON files for SpotC++ v${{ env.CHANGEVERSION }}"
+        file_pattern: "AltStoreRepo.json ScarletRepo.json"
